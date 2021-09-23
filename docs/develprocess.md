@@ -824,9 +824,9 @@ Individual projects part of XCP-ng or Xen Orchestra can also define additional r
 
 The main goals behind the commit message rules are:
 
-* consistency among our respositories,
+* consistency among our repositories,
 * easier code review,
-* easier code archeology(Good commit messages help a lot when trying to understand a piece of code, especially to answer this essential question: *WHY*?),
+* easier code archeology (Good commit messages help a lot when trying to understand a piece of code, especially to answer this essential question: *WHY*?),
 * following a set of largely accepted conventions in Free and Open Source Software development,
 * be good citizens when contributing to upstream projects.
 
@@ -850,9 +850,9 @@ Footer
 
 ### First line: short subject
 
-Here's a challenge: it must remains really short (50 characters is the convention, but in this minimal set of rules we'll allow up to 70 characters), but also ideally answer three essential questions:
+Here's a challenge: it must remain really short (50 characters is the convention, but in this minimal set of rules we'll allow up to 70 characters), but also ideally answer three essential questions:
 
-* Is it a feature, a bugfix, a security fix (*type*)?
+* Is it a feature, a bugfix, a security fix, a refactoring, a documentation update, etc. (*type*)?
 * What component is modified, if this information is relevant (*scope*)?
 * What changed? If contains a verb (recommended), must be in the imperative form (*short change description*).
 
@@ -897,7 +897,7 @@ To emphasize more on this, here are rules extracted from [this guide about good 
 
 The description is also an introduction, a guide, for people who will review your code before they accept it (or not) in their project. GitHub's interface does not make it straightforward for reviewers to read the commit messages before they review the code, but some reviewers still go for the commit message before anything (and some other review tools give commit messages a better place and allow to comment them as part of the review).
 
-For good examples, go look at the commit history from the Xen project or from the linux kernel project. At first, maybe you'll think "Wow, those commit messages are really verbose, why don't they just rely on the code to understand the changes?". But it's done precisely for the reasons exposed above and is necessary for projects of that scope and gathering so many different contributors, some of which just contribute once then disappear.
+For good examples, go look at the commit history [from the Xen project](http://xenbits.xenproject.org/gitweb/?p=xen.git;a=log;h=HEAD) or [from the linux kernel project](https://github.com/torvalds/linux/commits/master). At first, maybe you'll think "Wow, those commit messages are really verbose, why don't they just rely on the code to understand the changes?". But it's done precisely for the reasons exposed above and is necessary for projects of that scope and gathering so many different contributors, some of which just contribute once then disappear.
 
 Verbs that describe what you did are in the imperative form. Lines should not be longer than 70 characters.
 
@@ -911,7 +911,7 @@ Whenever possible, reference public issues or forum threads. No specific wording
 * `See ...`
 * `References: ...`
 * `Refs: ...`
-* (`Fixes: ...`}
+* (`Fixes: ...`)
 * (`Closes: ...`)
 * Etc.
 

@@ -972,6 +972,16 @@ Enabling UEFI Secure Boot for guests ensures that XCP-ng VMs will only execute t
 * A UEFI guest VM.
 * For Windows, ensure the VM has at least 2 vCPUs.
 
+### How XCP-ng Manages the Certificates
+
+By default, no VMs have any cert except for the `PK` on XCP-ng.
+
+Once `secureboot-certs` is called, the XAPI DB entry for the pool and all the hosts is populated with a base64-encoded tarball of the UEFI certificates. *The certificates are still not installed on disk, they only exist in the XAPI DB*.
+
+Prior to launching a VM, XAPI extracts the tarball to `/usr/share/varstored/` (on XCP-ng, this contains symlinks to files in `/var/lib/uefistored/` and `/usr/share/uefistored`). This is when the certificates first make it to disk (except the PK which is distributed with the `uefistored` RPM).
+
+After extracting the certificates to disk, XAPI starts the `uefistored` daemon and starts the VM. The `uefistored` daemon then reads the certificates from disk and populates the VM's NVRAM store with them, and based on the certificates present and the state of the VM's `platform:secureboot` parameter `uefistored` sets the Secure Boot state.
+
 ### Configure the Pool
 
 Before enabling UEFI Secure Boot for guest VMs, first execute the `secureboot-certs` script on one host of the pool. This tool downloads, formats, and installs UEFI certificates for the `PK`, `KEK`, `db`, and `dbx` certificates in the XCP-ng pool.
@@ -1089,88 +1099,6 @@ for the `dbx` argument:
 secureboot-certs install default default default path/to/dbxupdate_x64.bin
 ```
 
-### Changing the Certificates Already Installed in a Pool
-
-To change the certificates in a pool, simply call `secureboot-certs install` in the same ways as described in [Install the Secure Boot Certificates](#install-the-secure-boot-certificates-required).
-
-If UEFI VMs have already been launched with old certificates installed, they will need to have their certificates changed using the instructions in [Changing the Certificates Already Installed on a VM](#changing-the-certificates-already-installed-on-a-vm).
-
-### Changing the Certificates Already Installed on a VM
-
-If a VM has already booted it may have its own copy of the UEFI certificates. To verify this, execute:
-
-```
-varstore-ls <vm-uuid>
-```
-
-If the relevant certs are installed, their names will be in the output (i.e., `PK`, `KEK`, `db`, or `dbx`).
-
-If you have installed a new set of certificates on the pool *after VMs have been launched with old certificates*, then it is required to reset the certificates specifically for those VMs (unless you want the VMs to keep using the ones they already have).
-
-In order to reset the VM's certificates, shutdown the VM and execute `varstore-sb-state <vm-uuid> setup`. When the VM boots, its certificates will be updated to those found in the XCP-ng pool (those installed by `secureboot-certs`).
-
-:::warning
-`varstore-sb-state <vm-uuid> setup` wipes previously installed Secure Boot certificates (if there were any) from the VM's private NVRAM storage. Upon boot, they will be replaced by the default certificates installed by the `secureboot-certs` script. Also note that all `varstore-{set,sb-state}` commands that modify the variable storage for the VM must be called when the VM is shutdown.
-:::
-
-### Viewing Certs Already Installed on System
-
-To view the default certs that are available pool-wide:
-
-```
-secureboot-certs report
-```
-
-To view the certs already installed into a VM's firmware:
-
-```
-varstore-ls <vm-uuid>
-```
-
-and then to see the full cert:
-
-```
-varstore-get <vm-uuid> <guid> <name> | hexdump -Cv
-```
-
-The GUID and name for varstore-get are the values returned by `varstore-ls`.
-
-### Remove Certs from the Pool
-
-To remove the installed certs in the pool:
-
-```
-secureboot-certs clear
-```
-
-Note that this does not remove the certs from the VMs or from disk. In order to clear the certs from the VMs it is required to use `varstore-rm`. See [Remove Certs from a VM](#remove-certs-from-a-VM) on each VM and also remove the ".auth" files for the certs you'd like to remove (found in `/var/lib/uefistored/` and `/usr/share/uefistored/`).
-
-### Remove Certs from a VM
-
-To remove a cert use `varstore-rm`.
-
-For example, to remove the `dbx` from a VM.
-
-```
-varstore-rm <vm-uuid> d719b2cb-3d3a-4596-a3bc-dad00e67656f dbx
-```
-
-Note that the GUID may be found by using `varstore-ls <vm-uuid>`.
-
-:::tip
-Any certificate removed from the VM but still present in the pool configuration or on the host's disk at `/var/lib/uefistored/` will be automatically added back the next time the VM starts (unless another certificate it depends on was manually removed from `/var/lib/uefistored/`).
-:::
-
-### How XCP-ng Manages the Certificates
-
-By default, no VMs have any cert except for the `PK` on XCP-ng.
-
-Once `secureboot-certs` is called, the XAPI DB entry for the pool and all the hosts is populated with a base64-encoded tarball of the UEFI certificates. *The certificates are still not installed on disk, they only exist in the XAPI DB*.
-
-Prior to launching a VM, XAPI extracts the tarball to `/usr/share/varstored/` (on XCP-ng, this contains symlinks to files in `/var/lib/uefistored/` and `/usr/share/uefistored`). This is when the certificates first make it to disk (except the PK which is distributed with the `uefistored` RPM).
-
-After extracting the certificates to disk, XAPI starts the `uefistored` daemon and starts the VM. The `uefistored` daemon then reads the certificates from disk and populates the VM's NVRAM store with them, and based on the certificates present and the state of the VM's `platform:secureboot` parameter `uefistored` sets the Secure Boot state.
-
 ### Enable Secure Boot for a Guest VM
 
 #### Create a new Secure Boot VM
@@ -1278,7 +1206,83 @@ xe vm-param-set uuid=<vm-uuid> platform:secureboot=false
 
 Reboot the VM and Secure Boot will be disabled.
 
-### Secure Boot and the UEFI Firmware Menu in the Guest
+### Certificate Management
+
+#### Viewing Certs Already Installed on System
+
+To view the default certs that are available pool-wide:
+
+```
+secureboot-certs report
+```
+
+To view the certs already installed into a VM's firmware:
+
+```
+varstore-ls <vm-uuid>
+```
+
+and then to see the full cert:
+
+```
+varstore-get <vm-uuid> <guid> <name> | hexdump -Cv
+```
+
+The GUID and name for varstore-get are the values returned by `varstore-ls`.
+
+#### Changing the Certificates Already Installed in a Pool
+
+To change the certificates in a pool, simply call `secureboot-certs install` in the same ways as described in [Install the Secure Boot Certificates](#install-the-secure-boot-certificates-required).
+
+If UEFI VMs have already been launched with old certificates installed, they will need to have their certificates changed using the instructions in [Changing the Certificates Already Installed on a VM](#changing-the-certificates-already-installed-on-a-vm).
+
+#### Remove Certs from the Pool
+
+To remove the installed certs in the pool:
+
+```
+secureboot-certs clear
+```
+
+Note that this does not remove the certs from the VMs or from disk. In order to clear the certs from the VMs it is required to use `varstore-rm`. See [Remove Certs from a VM](#remove-certs-from-a-VM) on each VM and also remove the ".auth" files for the certs you'd like to remove (found in `/var/lib/uefistored/` and `/usr/share/uefistored/`).
+
+#### Changing the Certificates Already Installed on a VM
+
+If a VM has already booted it may have its own copy of the UEFI certificates. To verify this, execute:
+
+```
+varstore-ls <vm-uuid>
+```
+
+If the relevant certs are installed, their names will be in the output (i.e., `PK`, `KEK`, `db`, or `dbx`).
+
+If you have installed a new set of certificates on the pool *after VMs have been launched with old certificates*, then it is required to reset the certificates specifically for those VMs (unless you want the VMs to keep using the ones they already have).
+
+In order to reset the VM's certificates, shutdown the VM and execute `varstore-sb-state <vm-uuid> setup`. When the VM boots, its certificates will be updated to those found in the XCP-ng pool (those installed by `secureboot-certs`).
+
+:::warning
+`varstore-sb-state <vm-uuid> setup` wipes previously installed Secure Boot certificates (if there were any) from the VM's private NVRAM storage. Upon boot, they will be replaced by the default certificates installed by the `secureboot-certs` script. Also note that all `varstore-{set,sb-state}` commands that modify the variable storage for the VM must be called when the VM is shutdown.
+:::
+
+#### Remove Certs from a VM
+
+To remove a cert use `varstore-rm`.
+
+For example, to remove the `dbx` from a VM.
+
+```
+varstore-rm <vm-uuid> d719b2cb-3d3a-4596-a3bc-dad00e67656f dbx
+```
+
+Note that the GUID may be found by using `varstore-ls <vm-uuid>`.
+
+:::tip
+Any certificate removed from the VM but still present in the pool configuration or on the host's disk at `/var/lib/uefistored/` will be automatically added back the next time the VM starts (unless another certificate it depends on was manually removed from `/var/lib/uefistored/`).
+:::
+
+### Misc
+
+#### Secure Boot and the UEFI Firmware Menu in the Guest
 
 Disabling *and* enabling Secure Boot from the UEFI firmware menu inside the guest VM is explicitly disallowed on XCP-ng so as to ensure that guest users can not tamper with the Secure Boot policy set by the host administrator. This differs from enabling Secure Boot on physical hardware because that is typically done through the UEFI menu. On XCP-ng, instead, that privilege is given only to host administrators through the `uefistored` daemon and `varstored-tools` package.
 
@@ -1288,7 +1292,7 @@ If disabling Secure Boot by removing keys via Custom Mode is attempted in the UE
 
 ![](../assets/img/screenshots/guest_sb_only_physically_present_user.png)
 
-### Other Helpful Commands
+#### Other Helpful Commands
 
 You may check that the VM runs on UEFI firmware using the following command:
 

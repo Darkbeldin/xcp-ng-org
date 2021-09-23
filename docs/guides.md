@@ -1049,7 +1049,7 @@ Installing the latest `dbx` may reject some binaries that have not been updated 
 
 If your system supports guest distributions that have not updated their binaries with non-revoked signatures, we recommend you follow the instructions in [Installing an Archived UEFI DBX](#installing-an-archived-uefi-dbx).
 
-If necessary for your use case you may omit the dbx entirely. Note that this basically renders secure boot useless from a security perspective until the `dbx` is installed later by the host administrator or through an update to the guest VM (Windows installs its own `dbx`). This may be done by using the following command:
+If necessary for your use case you may omit the dbx entirely. Note that this basically renders secure boot useless from a security perspective until the `dbx` is installed later by the host administrator or by the OS itself (for example, some versions of MS Windows can install their own `dbx` as part of a security update, and recent installers - Windows 11? Windows Server 2022? - might do the same). This may be done by using the following command:
 
 ```
 # Download and install PK/KEK/db certificates, omit the dbx
@@ -1158,7 +1158,7 @@ varstore-rm <vm-uuid> d719b2cb-3d3a-4596-a3bc-dad00e67656f dbx
 Note that the GUID may be found by using `varstore-ls <vm-uuid>`.
 
 :::tip
-Any certificate removed from the VM but still present in the pool configuration or on the host's disk at `/var/lib/uefistored/` will be automatically added back the next time the VM starts.
+Any certificate removed from the VM but still present in the pool configuration or on the host's disk at `/var/lib/uefistored/` will be automatically added back the next time the VM starts (unless another certificate it depends on was manually removed from `/var/lib/uefistored/`).
 :::
 
 ### How XCP-ng Manages the Certificates
